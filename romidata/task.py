@@ -117,7 +117,7 @@ class FilesetTarget(luigi.Target):
 
 class RomiTask(luigi.Task):
     """Implementation of a luigi Task for the romidata DB API."""
-    upstream_task = TaskParameter()
+    upstream_task = luigi.TaskParameter()
 
     def requires(self):
         return self.upstream_task
