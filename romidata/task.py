@@ -41,32 +41,6 @@ To check for a task completeness, the fileset existence is checked as well as al
 import luigi
 import os
 
-class TaskParameter(Parameter):
-    """ A parameter for a custom task.
-    """
-
-    def serialize(self, x):
-        if x is None:
-            return ''
-        else:
-            return str(x.__name__)
-
-    def parse(self, x):
-        y = x.split(".")
-        if not y[-1].isidentifier():
-            raise ValueError("Invalid task name: %s"%x)
-        if len(y) == 1:
-            c = eval(y[0])
-        else:
-            mod = ".".join(y[:-1])
-            mod = importlib.import_module(mod)
-            c = mod.getattr(y[-1])
-
-        if not issubclass(c, RomiTask):
-            raise ValueError("Invalid task, not a subclass of RomiTask")
-
-        return c
-
 class DatabaseConfig(luigi.Config):
     """Configuration for the database."""
     db = luigi.Parameter()
