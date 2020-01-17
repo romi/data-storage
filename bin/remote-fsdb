@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+from flask import jsonify, Response
+from flask import Flask, send_file
+from flask import request, send_from_directory
+import sys
+import flask
+from romidata import FSDB
+
+class DBRequest():
+    def __init__(self, db):
+        self.db = db
+
+    def get(self, *args):
+        try:
+            db.connect()
+        except:
+            return Response("DB Busy", status=503)
+        x = jsonify(self._get_connected(*args))
+        db.disconnect()
+        return x
+
+    def post(self, *args):
+        try:
+            db.connect()
+        except:
+            return Response("DB Busy", status=503)
+        self._post_connected(*args)
+        db.disconnect()
+        return Response("OK", status=200)
+
+    def _get_connected(self, *args):
+        return NotImplementedError()
+
+    def _post_connected(self, *args):
+        return NotImplementedError()
+
+class ScanListRequest(DBRequest):
+    def _get_connected(self):
+        return [scan.id for scan in self.db.get_scans()]
+
+class ScanRequest(DBRequest):
+    def _get_connected(self, scan_id):
+        return [fileset.id for fileset in self.db.get_scan(scan_id).get_filesets()]
+
+    def _post_connected(self, scan_id, metadata):
+        scan = self.db.create_scan(scan_id)
+        if metadata is not None:
+            scan.set_metadata(metadata)
+
+class FilesetRequest(DBRequest):
+    def _get_connected(self, scan_id, fileset_id):
+        return [file.id for file in self.db.get_scan(scan_id).get_fileset(fileset_id).get_files()]
+
+    def _post_connected(self, scan_id, fileset_id, metadata):
+        scan = self.db.get_scan(scan_id, create=True)
+        fileset = scan.create_fileset(fileset_id)
+        if metadata is not None:
+            fileset.set_metadata(metadata)
+
+class FileRequest(DBRequest):
+    def _get_connected(self, scan_id, fileset_id, file_id):
+        return Response("OK")
+
+    def _post_connected(self, scan_id, fileset_id, file_id, data, ext, metadata):
+        scan = self.db.get_scan(scan_id, create=True)
+        fileset = scan.get_fileset(fileset_id, create=True)
+        file = fileset.create_file(file_id)
+        file.write_raw(data, ext=ext)
+        if metadata is not None:
+            file.set_metadata(metadata)
+
+if __name__ == "__main__":
+    db_loc = sys.argv[1]
+    db = FSDB(db_loc)
+
+    app = Flask(__name__)
+
+    @app.route('/scans', methods = ['GET'])
+    def scans():
+        return ScanListRequest(db).get()
+
+    @app.route('/scans/<scan_id>', methods = ['GET', 'POST'])
+    def scan(scan_id):
+        if flask.request.method == 'POST':
+            try:
+                metadata = request.form.to_dict()["metadata"]
+            except:
+                metadata = None
+            return ScanRequest(db).post(scan_id, metadata)
+        else:
+            return ScanRequest(db).get(scan_id)
+
+    @app.route('/scans/<scan_id>/<fileset_id>', methods = ['GET', 'POST'])
+    def fileset(scan_id, fileset_id):
+        if flask.request.method == 'POST':
+            try:
+                metadata = request.form.to_dict()["metadata"]
+            except:
+                metadata = None
+            return FilesetRequest(db).post(scan_id, fileset_id, metadata)
+        else:
+            return FilesetRequest(db).get(scan_id, fileset_id)
+
+    @app.route('/scans/<scan_id>/<fileset_id>/<file_id>', methods = ['GET', 'POST'])
+    def file(scan_id, fileset_id, file_id):
+        if flask.request.method == 'POST':
+            try:
+                metadata = request.form.to_dict()["metadata"]
+            except:
+                metadata = None
+            ext = request.form["ext"]
+            data = request.files["data"].read()
+            print("data = ")
+            print(data)
+            return FileRequest(db).post(scan_id, fileset_id, file_id, data, ext, metadata)
+        else:
+            return FileRequest(db).get(scan_id, fileset_id, file_id)
+
+    app.run(debug=True)
+
