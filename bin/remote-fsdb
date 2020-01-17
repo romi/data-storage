@@ -72,14 +72,15 @@ class FileRequest(DBRequest):
 if __name__ == "__main__":
     db_loc = sys.argv[1]
     db = FSDB(db_loc)
+    prefix = ""
 
     app = Flask(__name__)
 
-    @app.route('/scans', methods = ['GET'])
+    @app.route('%s/scans'%prefix, methods = ['GET'])
     def scans():
         return ScanListRequest(db).get()
 
-    @app.route('/scans/<scan_id>', methods = ['GET', 'POST'])
+    @app.route('%s/scans/<scan_id>'%prefix, methods = ['GET', 'POST'])
     def scan(scan_id):
         if flask.request.method == 'POST':
             try:
@@ -90,7 +91,7 @@ if __name__ == "__main__":
         else:
             return ScanRequest(db).get(scan_id)
 
-    @app.route('/scans/<scan_id>/<fileset_id>', methods = ['GET', 'POST'])
+    @app.route('%s/scans/<scan_id>/<fileset_id>'%prefix, methods = ['GET', 'POST'])
     def fileset(scan_id, fileset_id):
         if flask.request.method == 'POST':
             try:
@@ -101,7 +102,7 @@ if __name__ == "__main__":
         else:
             return FilesetRequest(db).get(scan_id, fileset_id)
 
-    @app.route('/scans/<scan_id>/<fileset_id>/<file_id>', methods = ['GET', 'POST'])
+    @app.route('%s/scans/<scan_id>/<fileset_id>/<file_id>'%prefix, methods = ['GET', 'POST'])
     def file(scan_id, fileset_id, file_id):
         if flask.request.method == 'POST':
             try:
