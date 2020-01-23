@@ -127,9 +127,12 @@ def write_image(dbfile, data, ext="jpg"):
         file extension (defaults to "jpg")
     """
     import imageio
+    kwargs = {}
     if ext == "jpg" and len(data.shape) == 3:
         data = data[:,:,:3]
-    b = imageio.imwrite(imageio.RETURN_BYTES, data, format=ext)
+    if ext == "jpg":
+        kwargs["quality"] = 90
+    b = imageio.imwrite(imageio.RETURN_BYTES, data, format=ext, **kwargs)
     dbfile.write_raw(b, ext)
 
 def read_volume(dbfile):
